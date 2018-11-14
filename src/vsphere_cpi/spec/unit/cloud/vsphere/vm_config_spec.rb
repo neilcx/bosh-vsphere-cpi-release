@@ -15,7 +15,8 @@ module VSphereCloud
       )
     end
     let(:datacenter) { double(name: 'fake_datacenter') }
-    let(:vm_type) { VmType.new(datacenter, cloud_properties)}
+    let(:pbm) { double('Pbm') }
+    let(:vm_type) { VmType.new(datacenter, cloud_properties, pbm)}
     let(:cluster_provider) { nil }
 
     describe '#upgrade_hw_version?' do
