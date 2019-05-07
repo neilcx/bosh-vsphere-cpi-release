@@ -19,7 +19,7 @@ module VSphereCloud
     end
 
     attr_accessor :client
-    attr_reader :config, :datacenter, :heartbeat_thread, :pbm
+    attr_reader :config, :datacenter, :heartbeat_thread, :pbm #, :tag_manager
 
     def enable_telemetry
       http_client = VSphereCloud::CpiHttpClient.new
@@ -84,6 +84,14 @@ module VSphereCloud
       @agent_env = AgentEnv.new(
         client: client,
         file_provider: @file_provider,
+      )
+
+      # to create a tag manager, what kind of info do I need ?
+      # host information
+      # user information
+
+      @tag_manager = TagManager.new(
+
       )
 
       VMAttributeManager.init(@client.service_content.custom_fields_manager)
@@ -328,6 +336,7 @@ module VSphereCloud
             stemcell: Stemcell.new(stemcell_cid),
             upgrade_hw_version: @config.upgrade_hw_version,
             pbm: @pbm,
+            tag_manager: @tag_manager
           )
           created_vm = vm_creator.create(vm_config)
         rescue => e

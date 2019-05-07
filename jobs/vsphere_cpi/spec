@@ -34,6 +34,8 @@ properties:
   vcenter.upgrade_hw_version:
     description: Upgrades virtual machines to latest virtual hardware version supported on the ESXi host.
     default: false
+  # vcenter.specified_vm_tags:
+  #   description: Tags to be attached to Created Vms
   vcenter.vm_storage_policy_name:
     description: Name of the storage Policy which is applied to a VM and its ephemeral disk.
   vcenter.connection_options.ca_cert:

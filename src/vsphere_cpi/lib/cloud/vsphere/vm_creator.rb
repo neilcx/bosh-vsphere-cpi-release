@@ -1,12 +1,13 @@
 require 'cloud/vsphere/logger'
 require 'cloud/vsphere/cpi_extension'
+require 'cloud/vsphere/tag_manager'
 
 module VSphereCloud
   class VmCreator
     include Logger
 
     def initialize(client:, cloud_searcher:, cpi:, datacenter:, agent_env:, ip_conflict_detector:, default_disk_type:,
-                   enable_auto_anti_affinity_drs_rules:, stemcell:, upgrade_hw_version:, pbm:)
+                   enable_auto_anti_affinity_drs_rules:, stemcell:, upgrade_hw_version:, pbm:, tag_manager:)  # these initializeing in sequesce or in key
       @client = client
       @cloud_searcher = cloud_searcher
       @cpi = cpi
@@ -18,6 +19,7 @@ module VSphereCloud
       @stemcell = stemcell
       @upgrade_hw_version = upgrade_hw_version
       @pbm = pbm
+      @tag_manager = tag_manager
     end
 
     def create(vm_config)
@@ -215,6 +217,11 @@ module VSphereCloud
             end
           rescue VSphereCloud::VCenterClient::AlreadyUpgraded
           end
+
+          #Attach tags
+
+          @tag_manager.attach_tags(created_vm, vm_config.tags)
+
 
           # Power on VM
           logger.info("Powering on VM: #{created_vm}")
