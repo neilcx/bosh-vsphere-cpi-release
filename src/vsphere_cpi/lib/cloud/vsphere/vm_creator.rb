@@ -1,13 +1,13 @@
 require 'cloud/vsphere/logger'
 require 'cloud/vsphere/cpi_extension'
-require 'cloud/vsphere/tag_manager'
+require 'cloud/vsphere/attach_tag_to_vm'
 
 module VSphereCloud
   class VmCreator
     include Logger
 
     def initialize(client:, cloud_searcher:, cpi:, datacenter:, agent_env:, ip_conflict_detector:, default_disk_type:,
-                   enable_auto_anti_affinity_drs_rules:, stemcell:, upgrade_hw_version:, pbm:, tag_manager:)  # these initializeing in sequesce or in key
+                   enable_auto_anti_affinity_drs_rules:, stemcell:, upgrade_hw_version:, pbm:)  # these initializeing in sequesce or in key
       @client = client
       @cloud_searcher = cloud_searcher
       @cpi = cpi
@@ -19,7 +19,6 @@ module VSphereCloud
       @stemcell = stemcell
       @upgrade_hw_version = upgrade_hw_version
       @pbm = pbm
-      @tag_manager = tag_manager
     end
 
     def create(vm_config)
@@ -218,14 +217,50 @@ module VSphereCloud
           rescue VSphereCloud::VCenterClient::AlreadyUpgraded
           end
 
+
+
           #Attach tags
 
-          @tag_manager.attach_tags(created_vm, vm_config.tags)
+          # 1. replace these values with real value : host, user_name, password
+          # 2. find out scheme and verify ssl , verify ssl host
+          # 3. Try to make this into a function
+          # 4. Try to make this into a separate file (class)
 
+          # Authentication
+          configuration = VSphereAutomation::Configuration.new.tap do |config|
+            config.host='192.168.111.142'
+            config.username='administrator@vsphere.local'
+            config.password='Admin!23'
+            config.scheme='https'
+            config.verify_ssl=false
+            config.verify_ssl_host=nil
+          end
+          #
+          #
+
+          api_client = VSphereAutomation::ApiClient.new(configuration)
+          api_client.default_headers['Authorization'] = configuration.basic_auth_token
+          session_api = VSphereAutomation::CIS::SessionApi.new(api_client)
+          session_id = session_api.create('').value
+          api_client.default_headers['vmware-api-session-id'] = session_id
+
+          require 'pry-byebug'
+          binding.pry
+
+          tagging_tag = TaggingTag::AttachTagToVm.new(api_client) # do a simple initialization with hard code
+          logger.info("Test tagging_tag")
+          tagging_tag.attach_tags(created_vm, vm_config)
+
+          logger.info("Test tagging_tag.attach_tags")
+
+          binding.pry
 
           # Power on VM
           logger.info("Powering on VM: #{created_vm}")
           created_vm.power_on
+
+          binding.pry
+
           # Pin this VM to the host by disabling DRS actions for the VM
           # if pin vm is enabled in cloud configuration for the VM.
           disable_drs(created_vm, cluster) if vm_config.vm_type.disable_drs

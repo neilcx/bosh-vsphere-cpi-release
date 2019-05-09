@@ -86,14 +86,6 @@ module VSphereCloud
         file_provider: @file_provider,
       )
 
-      # to create a tag manager, what kind of info do I need ?
-      # host information
-      # user information
-
-      @tag_manager = TagManager.new(
-
-      )
-
       VMAttributeManager.init(@client.service_content.custom_fields_manager)
 
       @pbm = VSphereCloud::Pbm.new(pbm_api_uri: @config.pbm_api_uri, http_client: @http_client, vc_cookie: @client.soap_stub.vc_cookie)
@@ -335,9 +327,11 @@ module VSphereCloud
             enable_auto_anti_affinity_drs_rules: @config.vcenter_enable_auto_anti_affinity_drs_rules,
             stemcell: Stemcell.new(stemcell_cid),
             upgrade_hw_version: @config.upgrade_hw_version,
-            pbm: @pbm,
-            tag_manager: @tag_manager
+            pbm: @pbm
           )
+
+          logger.info("VmCreator New Finished")
+
           created_vm = vm_creator.create(vm_config)
         rescue => e
           logger.error("Error in creating vm: #{e}, Backtrace - #{e.backtrace.join("\n")}")
