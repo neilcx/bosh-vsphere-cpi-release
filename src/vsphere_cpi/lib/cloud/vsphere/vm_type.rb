@@ -19,6 +19,10 @@ module VSphereCloud
       define_method(name) { @cloud_properties[name] }
     end
 
+    def tags
+      @cloud_properties['tags']
+    end
+
     def storage_list
       @storage_list = @cloud_properties['datastores'] || []
     end

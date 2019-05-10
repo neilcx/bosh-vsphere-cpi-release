@@ -21,21 +21,31 @@ module  VSphereCloud
       end
 
       private def tagging_category_api_instance
-        @tagging_category_api_instance ||= VSphereAutomation::CIS::TaggingCategoryApi.new(api_client)
+        @tagging_category_api_instance ||= VSphereAutomation::CIS::TaggingCategoryApi.new(@api_client)
       end
 
-      def verify_category_id( tag_category, category_ids )
-        tagging_category_api_instance = VSphereAutomation::CIS::TaggingCategoryApi.new(api_client)
-        category_ids.each do |category_id|
+      private def tagging_tag_api_instance
+        @tagging_tag_api_instance ||= VSphereAutomation::CIS::TaggingTagApi.new(@api_client)
+      end
+
+      # returns the category_id or nil
+      def verify_category_id( config_category, category_ids_on_host )
+        category_ids_on_host.each do |category_id|
           result = tagging_category_api_instance.get(category_id)
-          return result.value if tag_category == result.value.name
+          return result.value.id if config_category == result.value.name
+        end
+        nil
+      end
+
+      def verify_tag_id( config_tag, category_tags)
+        category_tags.each do |category_tag|
+          result = tagging_tag_api_instance.get(category_tag)
+          return result.value.id if config_tag == result.value.name
         end
         nil
       end
 
       def attach_tags(created_vm, vm_config)
-        require 'pry-byebug'
-        binding.pry
         tags =  vm_config.vm_type.tags
 
         #tag_assoc_api = VSphereAutomation::CIS::TaggingTagAssociationApi.new(api_client)
@@ -45,39 +55,37 @@ module  VSphereCloud
         tag_assoc_info.object_id.type='VirtualMachine'
 
         begin
-          tagging_categories = tagging_category_api_instance.list
+          category_id_list_on_host = tagging_category_api_instance.list
         rescue VSphereAutomation::ApiError => e
           puts "Exception when calling TaggingCategoryApi->list: #{e}"
         end
-
-        category_ids = tagging_categories.value
-
-
+        category_ids_on_host = category_id_list_on_host.value
 
         tags.each do |tag|
+          cloud_config_category = tag['category']
+          cloud_config_tag = tag['tag']
 
-          require 'pry-byebug'
-          binding.pry
-
-          tag_category = tag['category']
-          tag_name = tag['tag']
-
-          # {:id=>"urn:vmomi:InventoryServiceCategory:1c909f38-5273-462f-a866-ed11e71247e6:GLOBAL",
-          #  :name=>"test-category", :description=>"neil for test",
+          # :id=>"urn:vmomi:InventoryServiceCategory:1c909f38-5273-462f-a866-ed11e71247e6:GLOBAL",
+          # other information  in  result.value
+          # :name=>"test-category", :description=>"neil for test",
           #  :cardinality=>"SINGLE", :associable_types=>[], :used_by=>[]}
-          #
-          target_id = verify_category_id(tag_category, category_ids)
+          target_category = verify_category_id(cloud_config_category, category_ids_on_host)
 
-          # target_id should not be nil
+          # target_category should not be nil
           #           should support VM associativity
-          #           cardinality
+          #           cardinality  => better to group these cate-tags first and then do verify cadinality
 
+          begin
+            tag_list_in_category = tagging_tag_api_instance.list_tags_for_category(target_category)
+          rescue VSphereAutomation::ApiError => e
+            puts "Exception when calling TaggingTagApi->list_tags_for_category: #{e}"
+          end
 
-
-
-
-          tag_assoc_api.attach('urn:vmomi:InventoryServiceTag:6e49baa3-b8c2-43f9-8faf-4e8177d4e1a3:GLOBAL',tag_assoc_info
-          )
+          category_tags = tag_list_in_category.value
+          
+          # next is find all tags under target target_category.id
+          target_tag = verify_tag_id(cloud_config_tag, category_tags)
+          tag_assoc_api.attach(target_tag,tag_assoc_info)
         end
       end
     end

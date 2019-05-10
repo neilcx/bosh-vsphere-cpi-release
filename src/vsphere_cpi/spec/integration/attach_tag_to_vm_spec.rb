@@ -42,7 +42,6 @@ describe 'Tagging tag to vm' do
 
         require 'pry-byebug'
         binding.pry
-
       ensure
         #delete_vm(@cpi, test_vm_id)
       end
