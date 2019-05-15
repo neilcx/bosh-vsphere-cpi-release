@@ -7,7 +7,7 @@ module VSphereCloud
     include Logger
 
     def initialize(client:, cloud_searcher:, cpi:, datacenter:, agent_env:, ip_conflict_detector:, default_disk_type:,
-                   enable_auto_anti_affinity_drs_rules:, stemcell:, upgrade_hw_version:, pbm:)  # these initializeing in sequesce or in key
+                   enable_auto_anti_affinity_drs_rules:, stemcell:, upgrade_hw_version:, pbm:)
       @client = client
       @cloud_searcher = cloud_searcher
       @cpi = cpi
@@ -217,49 +217,36 @@ module VSphereCloud
           rescue VSphereCloud::VCenterClient::AlreadyUpgraded
           end
 
-
-
-          #Attach tags
-
-          # 1. replace these values with real value : host, user_name, password
-          # 2. find out scheme and verify ssl , verify ssl host
-          # 3. Try to make this into a function
-          # 4. Try to make this into a separate file (class)
-
-          # Authentication
-          configuration = VSphereAutomation::Configuration.new.tap do |config|
-            config.host='192.168.111.142'
-            config.username='administrator@vsphere.local'
-            config.password='Admin!23'
-            config.scheme='https'
-            config.verify_ssl=false
-            config.verify_ssl_host=nil
+          # Attach Tags to VM
+          if  vm_config.vm_type.tags && !vm_config.vm_type.tags.empty?
+            logger.info("Tags found in config file. Attaching tags to vm '#{vm_config.name}'.")
+            begin
+              configuration = VSphereAutomation::Configuration.new.tap do |config|
+                config.host = cpi_options["vcenters"][0]["host"]
+                config.username = cpi_options["vcenters"][0]["user"]
+                config.password = cpi_options["vcenters"][0]["password"]
+                config.scheme = 'https'
+                config.verify_ssl = false
+                config.verify_ssl_host = nil
+              end
+              api_client = VSphereAutomation::ApiClient.new(configuration)
+              api_client.default_headers['Authorization'] = configuration.basic_auth_token
+              session_api = VSphereAutomation::CIS::SessionApi.new(api_client)
+              session_id = session_api.create('').value
+              api_client.default_headers['vmware-api-session-id'] = session_id
+              tagging_tag = TaggingTag::AttachTagToVm.new(api_client)
+              tagging_tag.attach_tags(created_vm, vm_config)
+            rescue => e1
+              logger.warn("Attaching tags failed with message: #{e1}. Continue without attaching Tags to VM." )
+            end
           end
-          #
-          #
-
-          api_client = VSphereAutomation::ApiClient.new(configuration)
-          api_client.default_headers['Authorization'] = configuration.basic_auth_token
-          session_api = VSphereAutomation::CIS::SessionApi.new(api_client)
-          session_id = session_api.create('').value
-          api_client.default_headers['vmware-api-session-id'] = session_id
 
           require 'pry-byebug'
           binding.pry
-
-          tagging_tag = TaggingTag::AttachTagToVm.new(api_client) # do a simple initialization with hard code
-          logger.info("Test tagging_tag")
-          tagging_tag.attach_tags(created_vm, vm_config)
-
-          logger.info("Test tagging_tag.attach_tags")
-
-          binding.pry
-
           # Power on VM
           logger.info("Powering on VM: #{created_vm}")
           created_vm.power_on
 
-          binding.pry
 
           # Pin this VM to the host by disabling DRS actions for the VM
           # if pin vm is enabled in cloud configuration for the VM.

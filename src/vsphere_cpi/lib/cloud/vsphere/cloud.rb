@@ -19,7 +19,7 @@ module VSphereCloud
     end
 
     attr_accessor :client
-    attr_reader :config, :datacenter, :heartbeat_thread, :pbm #, :tag_manager
+    attr_reader :config, :datacenter, :heartbeat_thread, :pbm
 
     def enable_telemetry
       http_client = VSphereCloud::CpiHttpClient.new
